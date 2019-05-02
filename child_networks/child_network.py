@@ -2,10 +2,11 @@
 
 import tensorflow as tf
 import os
-from config import MAIN_DIR
 
+
+MAIN_DIR = os.getcwd()
 LOGS_DIR = os.path.join(MAIN_DIR, 'logs')
-
+print(LOGS_DIR)
 
 class Child_ConvNet(object):
     
