@@ -19,20 +19,20 @@ LOGS_DIR = os.path.join(MAIN_DIR, 'logs')
 """
 
 def _create_tf_dataset(x, y, batch_size):
-        """
-        Description:
-            private method
-            Creates tf.data.Dataset object.
+    """
+    Description:
+        private method
+        Creates tf.data.Dataset object.
 
-        Arguments:
-            x,y - data and labels
-            batch_size
-          
-        Returns:
-            tf.data.Dataset object
-        """
-    return tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(x),
-                                tf.data.Dataset.from_tensor_slices(y))).shuffle(500).repeat().batch(batch_size)
+    Arguments:
+        x,y - data and labels
+        batch_size
+        
+    Returns:
+        tf.data.Dataset object
+    """
+
+    return tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(x), tf.data.Dataset.from_tensor_slices(y))).shuffle(500).repeat().batch(batch_size)
 
 def get_tf_dataset_from_numpy(batch_size, validation_split = 0.1):
 
