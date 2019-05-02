@@ -2,8 +2,8 @@
 
 import tensorflow as tf
 import os
+from config import MAIN_DIR
 
-MAIN_DIR = os.getcwd()
 LOGS_DIR = os.path.join(MAIN_DIR, 'logs')
 
 
@@ -75,7 +75,7 @@ class Child_ConvNet(object):
         
         """
         Description:
-            This method creates the networks using the cnn_dna parameer
+            This method creates the networks using the cnn_dna parameter
             
         Arguments:
             input_tensor - tensor representing input data; shape of this data
