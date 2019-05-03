@@ -68,7 +68,7 @@ class Controller(object):
             self
             
         Returns:
-            controller
+            Nothing, only sets the controller
         """      
         with tf.name_scope('controller_inputs'):
 
@@ -131,6 +131,35 @@ class Controller(object):
 
             print('Finished building a controller')
 
+    def network_generator(self, nas_cell_hidden_state): 
+        """
+        Description:
+
+            This method initializes our full controller model
+
+        Arguments:
+            nas_cell_hidden_state - state of the nas cell
+            
+        Returns:
+            controller
+        """  
+        # number of output units we expect from NAS cell
+
+        with tf.name_scope('network_generation'):
+            nas = tf.contrib.rnn.NASCell(self.num_of_cell_outputs)
+            network_architecture, nas_cell_hidden_state = tf.nn.dynamic_rnn(nas, tf.expand_dims(nas_cell_hidden_state, -1), dtype=tf.float32)
+            bias_variable = tf.Variable([0.01]* self.num_cell_outputs)
+            network_architecture = tf.nn.bias_add(network_architecture, bias_variable)
+
+        
+        return network_architecture[:,-1:,:]
+
+    def generate_child_network(self, child_network_architecture):
+
+        with self.graph.as_default():
+            return self.sess.run(self.cnn_dna_output, {self.child_network_architectures:child_network_architecture})
+    
+    
 
 
 
