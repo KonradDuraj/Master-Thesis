@@ -65,8 +65,6 @@ class Controller(object):
             This method builds up our controller - Reccurent Neural Network
 
         Arguments:
-            self
-            
         Returns:
             Nothing, only sets the controller
         """      
@@ -184,8 +182,8 @@ class Controller(object):
             validation accuracy
         """  
 
-        log_file = open(os.path.join(LOGS_DIR, 'child_logger.txt'), 'a+')
-        log_file.write(f'Train with dna: {cnn_dna}')
+        child_file = open(os.path.join(LOGS_DIR, 'child_logger.txt'), 'a+')
+        child_file.write(f'Train with dna: {cnn_dna}')
 
         child_graph = tf.Graph()
         with child_graph.as_default():
@@ -258,6 +256,74 @@ class Controller(object):
             
         child_file.close()
         return np.mean(avg_val_acc)
+
+    def train_controller(self):
+        """
+        Description:
+            This method trains the controller 
+
+        Arguments:
+            
+        Returns:
+            Nothing, trains the reccurent network(controller)
+        """
+        with self.graph.as_default():
+            self.sess.run(tf.global_variables_initializer())
+
+        step = 0
+        total_rewards=  0
+        child_network_architecture = np.array([[10.0, 128.0, 1.0, 1.0] * controller_params['max_layers']], dtype=np.float32)
+
+        controller_file = open(os.path.join(LOGS_DIR, 'controller_logger.txt'), 'a+')
+        for episode in range(controller_params['max_episodes']):
+
+            controller_file.write(f'Episode {episode} for controller')
+            step +=1
+            episode_reward_buffer = []
+
+            for sub_child in range(controller_params["num_children_per_episode"]):
+
+                # generating child architecture
+
+                child_network_architecture = self.generate_child_network(child_network_architecture)[0]
+
+                if np.any(np.less_equal(child_network, 0)):
+                    reward = -1.0
+                else:
+                    reward = self.train_child_network(cnn_dna=child_network_architecture, child_id = f'Child/ {episode} episode:{episode} sub_child:{sub_child}')
+
+                episode_reward_buffer.append(reward)
+
+            mean_reward = np.mean(episode_reward_buffer)
+
+            self.reward_history.append(mean_reward)
+            self.architecture_history.append(child_network_architecture)
+
+            total_rewards += mean_reward
+
+            child_network_architecture = np.array(self.architecture_history[-step:]).ravel() / self.division_rate
+            child_network_architecture = child_network_architecture.reshape((-1, self.num_cell_outputs))
+
+            baseline = exp_moving_avg(self.reward_history)
+            last_reward = self.reward_history[-1]
+            rewards = [last_reward - baseline]
+
+            controller_file.write('Buffers before loss calculation')
+            controller_file.write(f'States:{child_network_architecture}')
+            controller_file.write(f'Rewards: {rewards}')
+
+            with self.graph.as_default():
+
+                _, loss = self.sess.run([self.train_op, self.total_loss],
+                                        {self.child_network_architecture: child_network_architecture,
+                                        self.discounted_rewards: rewards})
+
+            
+            controller_file.write(f'Episode: {episode} | Loss: {loss} | DNA: {child_network_architecture.ravel()} | Reward: {mean_reward}')
+
+            controller_file.close()
+
+        
 
 
 
