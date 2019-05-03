@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 from config import LOGS_DIR
-
+import os
 
 
 class Child_ConvNet(object):
@@ -65,7 +65,7 @@ class Child_ConvNet(object):
         """
         
         output = output.ravel()
-        cnn_dna = [list(output[x:x+4] for x in range(0, len(output), 4))]
+        cnn_dna = [list(output[x:x+4]) for x in range(0, len(output), 4)]
         
         return cnn_dna
         
@@ -91,8 +91,9 @@ class Child_ConvNet(object):
         for index in range(0, len(self.cnn_dna)):
             
             # get config parameters for the layers
-            
+            print(self.cnn_dna[index])
             kernel_size, stride, num_of_filters, max_pool_size = self.cnn_dna[index]
+
             with tf.name_scope(f'child_{self.child_id}_conv_layer_{index}'):
                 
                 output = tf.layers.conv2d(inputs=output,
@@ -127,14 +128,16 @@ class Child_ConvNet(object):
                 # Now we flatten our inputs and pass it through our
                 # dense layer which also is hardcoded
                 
-                with tf.scope(f'child_{self.child_id}_fully_connected_layer'):
+                with tf.name_scope(f'child_{self.child_id}_fully_connected_layer'):
                     
                     output = tf.layers.flatten(output, name='flatten')
-                    logits = tf.dense(output, self.num_of_classes, name='dense')
+                    logits = tf.layers.dense(output, self.num_of_classes, name='dense')
+
+                    log_file.close()    
                     
                 return logits
             
-        log_file.close()        
+            
     
     
             

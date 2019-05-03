@@ -61,8 +61,8 @@ def get_tf_dataset_from_numpy(batch_size, validation_split = 0.1):
         y_test = y_test.astype(np.float32)
 
         if y.shape[1] !=10:
-            y = np.utils.to_categorical(y, num_of_classes=10)
-            y_test = np.uitls.to_categorical(y_Test, num_of_classes=10)
+            y = np_utils.to_categorical(y, num_classes=10)
+            y_test = np_utils.to_categorical(y_test, num_classes=10)
 
         print('Data preprocessed')
 
