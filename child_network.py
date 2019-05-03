@@ -10,7 +10,7 @@ print(LOGS_DIR)
 
 class Child_ConvNet(object):
     
-    def __init__(self, cnn_dna, child_id,num_of_classes, beta_l2=1e-3, dropout_rate=0.3, **kwargs):
+    def __init__(self, cnn_dna, child_id, num_of_classes, beta_l2=1e-3, dropout_rate=0.3, **kwargs):
         
         """
         Description:
