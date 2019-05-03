@@ -50,7 +50,6 @@ class Controller(object):
         self.graph = tf.Graph()
         self.sess = tf.Session(graph= self.graph)
         self.num_cell_outputs = controller_params['components_per_layer']* controller_params['max_layers'] # from config
-
         self.reward_history = []
         self.architecture_history = []
         self.division_rate = 100
@@ -144,7 +143,7 @@ class Controller(object):
         # number of output units we expect from NAS cell
 
         with tf.name_scope('network_generation'):
-            nas = tf.contrib.rnn.NASCell(self.num_of_cell_outputs)
+            nas = tf.contrib.rnn.NASCell(self.num_cell_outputs)
             network_architecture, nas_cell_hidden_state = tf.nn.dynamic_rnn(nas, tf.expand_dims(nas_cell_hidden_state, -1), dtype=tf.float32)
             bias_variable = tf.Variable([0.01]* self.num_cell_outputs)
             network_architecture = tf.nn.bias_add(network_architecture, bias_variable)
