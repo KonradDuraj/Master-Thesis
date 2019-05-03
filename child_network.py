@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import tensorflow as tf
-import os
+from config import LOGS_DIR
 
 
-MAIN_DIR = os.getcwd()
-LOGS_DIR = os.path.join(MAIN_DIR, 'logs')
-print(LOGS_DIR)
 
 class Child_ConvNet(object):
     
@@ -86,7 +83,7 @@ class Child_ConvNet(object):
             
             The tensor that represents the output logit (pre-softmax activation)
         """       
-        log_file = open(os.path.join(LOGS_DIR, 'child_logger.txt'), 'w+')
+        log_file = open(os.path.join(LOGS_DIR, 'child_logger.txt'), 'a+')
         log_file.write(f'DNA for the network is: {self.cnn_dna}')
         
         output=input_tensor

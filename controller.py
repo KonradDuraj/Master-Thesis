@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from child_network import Child_ConvNet
 from cifar10_processor import get_tf_dataset_from_numpy
-from config import controller_params
+from config import controller_params,child_network_params,  LOGS_DIR
 
 
 def exp_moving_avg(rewards):
@@ -94,7 +94,7 @@ class Controller(object):
         # Now we set up our optimizer and its behaviour during training
         self.global_step = tf.Variable(0, trainable=False)
         self.learning_rate = tf.train.exponential_decay(0.99, self.global_step, 500, 0.96, staircase=True)
-        self.optimizer = tf.train.Adam(learning_rate = self.learning_rate)
+        self.optimizer = tf.train.RMSPropOptimizer(learning_rate = self.learning_rate)
         print('Optimizer setup finished')
 
         print('Calculating gradients and loss')
@@ -155,11 +155,113 @@ class Controller(object):
         return network_architecture[:,-1:,:]
 
     def generate_child_network(self, child_network_architecture):
+        """
+        Description:
 
+            This method generates child cnn networks
+
+        Arguments:
+            Architecture of cnn child - described via list of lists of parameters for each layer
+            
+        Returns:
+            Parsed and initialized cnn child
+        """  
         with self.graph.as_default():
             return self.sess.run(self.cnn_dna_output, {self.child_network_architectures:child_network_architecture})
     
-    
+    def train_child_network(self, cnn_dna, child_id):
+
+        """
+        Description:
+
+            This method train the child cnn network
+
+        Arguments:
+            cnn_dna - list of lists describing cnn child architecture
+            child_cnn - id for our child network
+            
+        Returns:
+            validation accuracy
+        """  
+
+        log_file = open(os.path.join(LOGS_DIR, 'child_logger.txt'), 'a+')
+        log_file.write(f'Train with dna: {cnn_dna}')
+
+        child_graph = tf.Graph()
+        with child_graph.as_default():
+            
+            print('Initializing the session')
+
+            sess = tf.Session()
+            child_network = Child_ConvNet(cnn_dna=cnn_dna,child_id=child_id, num_of_classes=10, **child_network_params)
+
+            print('Creating input pipeline')
+
+            train_dataset, valid_dataset, test_dataset, num_train_batches, num_valid_batches, num_test_batches = get_tf_dataset_from_numpy(batch_size=child_network_params['batch_size'])
+            
+            # Generic iterator
+            iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
+            next_tensor_batch - iterator.get_next()
+
+            # Separate train and validation set init ops
+            train_init_ops = iterator.make_initializer(train_dataset)
+            valid_init_ops = iterator.make_initializer(valid_dataset)
+
+            # Building the graph
+            input_tensor, labels = next_tensor_batch
+
+            # Build the child network, which returns the pre-softmax logits of the child network
+            logits = child_network.build_network(input_tensor)
+
+            # Define the loss function for child network
+            loss_ops = tf.nn.softmax_cross_entropy_with_logits_v2(labels=labels, logits=logits, name='loss')
+
+            # Define the training operation for the child network
+            train_ops = tf.train.AdamOptimizer(learning_rate=child_network_params['learning_rate']).minimize(loss_ops)
+
+            # Now we calculate the accuracy of our network
+
+            pred_ops = tf.nn.softmax(logits, name=preds)
+            correct = tf.equal(tf.argmax(preds_ops, 1), tf.argmax(labels,1), name='correct')
+            accuracy_ops = tf.reduce_mean(tf.cast(correct, tf.float32), name='accuracy')
+
+            initializer = tf.global_variables_initializer()
+
+            print('Training process started')
+
+            sess.run(initializer)
+            sess.run(train_init_ops)
+
+            child_file.write(f'Training CNN {child_id} for {child_network_params["max_epochs"]} epochs')
+
+            for epoch_idx in range(child_network_params['max_epochs']):
+
+                avg_loss, avg_acc = [], []
+
+                for batch_idx in range(num_train_batches):
+
+                    loss, _, accuracy = sess.run([loss_ops, train_ops, accuracy_ops])
+                    avg_loss.append(loss)
+                    avg_acc.append(accuracy)
+                
+                child_file.write(f'\t Epoch {epoch_idx}: \t loss: {np.mean(avg_loss)} \t accuracy: {np.mean(avg_acc)}')
+                
+            print('Validation and returned rewards')
+            sess.run(valid_init_ops)
+            avg_val_loss, avg_val_acc = [], []
+            for batch_idx in range(num_valid_batches):
+                valid_loss, valid_accuracy = sess.run([loss_ops, accuracy_ops])
+                avg_val_loss.append(valid_loss)
+                avg_val_acc.append(valid_accuracy)
+
+            child_file.write(f'\tValidation loss: {np.mean(avg_val_loss)}\t accuracy: {np.mean(avg_val_acc)}')
+            
+        child_file.close()
+        return np.mean(avg_val_acc)
+
+
+
+
 
 
 

@@ -1,3 +1,5 @@
+import os
+
 child_network_params = {
     "learning_rate": 3e-5,
     "max_epochs": 100,
@@ -12,3 +14,6 @@ controller_params = {
     'max_episodes': 2000,
     "num_children_per_episode": 10
 }
+
+MAIN_DIR = os.getcwd()
+LOGS_DIR = os.path.join(MAIN_DIR, 'logs')

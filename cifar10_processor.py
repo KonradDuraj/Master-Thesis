@@ -5,8 +5,7 @@ from keras.datasets import cifar10
 from keras.utils import np_utils
 
 
-MAIN_DIR = os.getcwd()
-LOGS_DIR = os.path.join(MAIN_DIR, 'logs')
+
 
 """
         Description:
