@@ -230,6 +230,7 @@ class Controller(object):
             sess.run(train_init_ops)
 
             child_file.write(f'Training CNN {child_id} for {child_network_params["max_epochs"]} epochs')
+            print(f'Training CNN {child_id} for {child_network_params["max_epochs"]} epochs')
 
             for epoch_idx in range(child_network_params['max_epochs']):
 
@@ -242,7 +243,8 @@ class Controller(object):
                     avg_acc.append(accuracy)
                 
                 child_file.write(f'\t Epoch {epoch_idx}: \t loss: {np.mean(avg_loss)} \t accuracy: {np.mean(avg_acc)}')
-                
+                print(f'\t Epoch {epoch_idx}: \t loss: {np.mean(avg_loss)} \t accuracy: {np.mean(avg_acc)}')
+
             print('Validation and returned rewards')
             sess.run(valid_init_ops)
             avg_val_loss, avg_val_acc = [], []
@@ -252,7 +254,8 @@ class Controller(object):
                 avg_val_acc.append(valid_accuracy)
 
             child_file.write(f'\tValidation loss: {np.mean(avg_val_loss)}\t accuracy: {np.mean(avg_val_acc)}')
-            
+            print(f'\tValidation loss: {np.mean(avg_val_loss)}\t accuracy: {np.mean(avg_val_acc)}')
+
         child_file.close()
         return np.mean(avg_val_acc)
 
@@ -277,6 +280,7 @@ class Controller(object):
         for episode in range(controller_params['max_episodes']):
 
             controller_file.write(f'Episode {episode} for controller')
+            print(f'Episode {episode} for controller')
             step +=1
             episode_reward_buffer = []
 
@@ -310,14 +314,14 @@ class Controller(object):
             controller_file.write('Buffers before loss calculation')
             controller_file.write(f'States:{child_network_architecture}')
             controller_file.write(f'Rewards: {rewards}')
-
+            
             with self.graph.as_default():
 
                 _, loss = self.sess.run([self.train_op, self.total_loss],
                                         {self.child_network_architectures: child_network_architecture,
                                         self.discounted_rewards: rewards})
 
-            
+            print(f'Episode: {episode} | Loss: {loss} | DNA: {child_network_architecture.ravel()} | Reward: {mean_reward}')
             controller_file.write(f'Episode: {episode} | Loss: {loss} | DNA: {child_network_architecture.ravel()} | Reward: {mean_reward}')
 
             controller_file.close()
