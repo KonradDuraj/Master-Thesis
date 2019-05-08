@@ -274,13 +274,13 @@ class Controller(object):
 
         step = 0
         total_rewards=  0
-        child_network_architecture = np.array([[10.0, 128.0, 1.0, 1.0] * controller_params['max_layers']], dtype=np.float32)
+        child_network_architecture = np.array([[3.0, 2.0, 15.0, 1.0] * controller_params['max_layers']], dtype=np.float32)
 
         controller_file = open(os.path.join(LOGS_DIR, 'controller_logger.txt'), 'a+')
         for episode in range(controller_params['max_episodes']):
 
             controller_file.write(f'Episode {episode} for controller')
-            print(f'Episode {episode} for controller')
+            print(f'\t Episode {episode} for controller \t ')
             step +=1
             episode_reward_buffer = []
 
@@ -290,10 +290,10 @@ class Controller(object):
 
                 child_network_architecture = self.generate_child_network(child_network_architecture)[0]
 
-                if np.any(np.less_equal(child_network, 0)):
+                if np.any(np.less_equal(child_network_architecture, 0.0)):
                     reward = -1.0
                 else:
-                    reward = self.train_child_network(cnn_dna=child_network_architecture, child_id = f'Child/ {episode} episode:{episode} sub_child:{sub_child}')
+                    reward = self.train_child_network(cnn_dna=child_network_architecture, child_id = f'child_episode_{episode}_sub_child_{sub_child}')
 
                 episode_reward_buffer.append(reward)
 
@@ -322,9 +322,9 @@ class Controller(object):
                                         self.discounted_rewards: rewards})
 
             print(f'Episode: {episode} | Loss: {loss} | DNA: {child_network_architecture.ravel()} | Reward: {mean_reward}')
-            controller_file.write(f'Episode: {episode} | Loss: {loss} | DNA: {child_network_architecture.ravel()} | Reward: {mean_reward}')
+            controller_file.write(f'/n Episode: {episode} | Loss: {loss} | DNA: {child_network_architecture.ravel()} | Reward: {mean_reward}')
 
-            controller_file.close()
+            #controller_file.close()
 
         
 

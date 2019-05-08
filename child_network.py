@@ -84,7 +84,7 @@ class Child_ConvNet(object):
             The tensor that represents the output logit (pre-softmax activation)
         """       
         log_file = open(os.path.join(LOGS_DIR, 'child_logger.txt'), 'a+')
-        log_file.write(f'DNA for the network is: {self.cnn_dna}')
+        log_file.write(f'\t DNA for the network is: {self.cnn_dna}\t')
         
         output=input_tensor
         
@@ -94,7 +94,8 @@ class Child_ConvNet(object):
             print(self.cnn_dna[index])
             kernel_size, stride, num_of_filters, max_pool_size = self.cnn_dna[index]
 
-            with tf.name_scope(f'child_{self.child_id}_conv_layer_{index}'):
+            scp_name =  f'child_{self.child_id}/convlayer_{index}' #"child_{}_conv_layer_{}".format(str(self.child_id), str(index))
+            with tf.name_scope(scp_name):
                 
                 output = tf.layers.conv2d(inputs=output,
                                           kernel_size=(kernel_size,kernel_size),
