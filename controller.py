@@ -1,14 +1,14 @@
-import os
+﻿import os
 import numpy as np
 import tensorflow as tf
 from child_network import Child_ConvNet
 from cifar10_processor import get_tf_dataset_from_numpy
-from config import controller_params,child_network_params,  LOGS_DIR
-
-
+from config import controller_params,child_network_params
+import keras.layers as kl
+"""
 def exp_moving_avg(rewards):
 
-    """
+    
     Description:
         We use this as the baseline
         function for our REINFORCE gradient calculation to
@@ -19,13 +19,13 @@ def exp_moving_avg(rewards):
         
     Returns:
         The last value of exponential moving average
-    """
+    
 
     weights = np.exp(np.linspace(-1. , 0. , len(rewards)))
     weights /= sum(weights)
     a = np.convolve(rewards, weights, mode="full")[:len(rewards)]
     return a[-1]
-
+"""
 
 class Controller(object):
 
@@ -53,6 +53,7 @@ class Controller(object):
         self.reward_history = []
         self.architecture_history = []
         self.division_rate = 100
+        self.clip_norm = 0.0
 
         with self.graph.as_default():
             self.build_controller() # method for building controller
@@ -73,12 +74,17 @@ class Controller(object):
         # number of output units we expect from NAS cell
 
         with tf.name_scope('network_generation'):
+            
             nas = tf.contrib.rnn.NASCell(self.num_cell_outputs)
+
+            #network_architecture, nas_cell_hidden_state = tf.nn.dynamic_rnn(nas, tf.expand_dims(nas_cell_hidden_state, -1), dtype=tf.float32)
             network_architecture, nas_cell_hidden_state = tf.nn.dynamic_rnn(nas, tf.expand_dims(nas_cell_hidden_state, -1), dtype=tf.float32)
-            bias_variable = tf.Variable([0.01]* self.num_cell_outputs)
+
+            bias_variable = tf.Variable([0.05]* self.num_cell_outputs)
             network_architecture = tf.nn.bias_add(network_architecture, bias_variable)
 
-        
+            print('Network architecture ', network_architecture)
+            print('Returned architecture: ', network_architecture[:,-1:,:])
             return network_architecture[:,-1:,:]
 
     def generate_child_network(self, child_network_architecture):
@@ -129,7 +135,8 @@ class Controller(object):
         print('Setting up the optimizer')
         # Now we set up our optimizer and its behaviour during training
         self.global_step = tf.Variable(0, trainable=False)
-        self.learning_rate = tf.train.exponential_decay(0.99, self.global_step, 500, 0.96, staircase=True)
+        self.learning_rate = tf.train.exponential_decay(0.05, self.global_step, 50,0.96, staircase=True)
+        #self.learning_rate = 0.3
         self.optimizer = tf.train.RMSPropOptimizer(learning_rate = self.learning_rate)
         print('Optimizer setup finished')
 
@@ -137,20 +144,33 @@ class Controller(object):
 
         with tf.name_scope('gradient_and_loss'):
 
-            self.policy_gradient_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
+            self.policy_gradient_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
 
                 logits = self.controller_output[:,-1,:],
                 labels = self.child_network_architectures
             ))
 
+            policy_network_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="controller")
+
             # We will use l2 regularization method for preventing overfitting of controller weights
-            self.l2_loss = tf.reduce_sum(tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables(scope='controller')]))
+            self.l2_loss = tf.reduce_sum([tf.reduce_sum(tf.square(x)) for x in policy_network_variables])
             
             # Now we will addd the to losses (with regularization parameter beta) to define total loss
-            self.total_loss = self.policy_gradient_loss + self.l2_loss * controller_params["beta"]
+            self.total_loss = self.policy_gradient_loss +   self.l2_loss * controller_params["beta"]
+
+            
 
             # Compute the gradients of the network over the loss
-            self.gradients = self.optimizer.compute_gradients(self.total_loss)
+            self.gradients = self.optimizer.compute_gradients(self.total_loss) # ,tf.GraphKeys.TRAINABLE_VARIABLES
+
+            with tf.name_scope('policy_gradients'):
+                    # normalize gradients so that they dont explode if argument passed
+                    if self.clip_norm is not None and self.clip_norm != 0.0:
+                        norm = tf.constant(self.clip_norm, dtype=tf.float32)
+                        gradients, vars = zip(*self.gradients)  # unpack the two lists of gradients and the variables
+                        gradients, _ = tf.clip_by_global_norm(gradients, norm)  # clip by the norm
+                        self.gradients = list(zip(gradients, vars))  # we need to set values later, convert to list
+
 
             print('Computing REINFORCE gradients')
             # Compute gradients using REINFORCE 
@@ -181,18 +201,15 @@ class Controller(object):
             validation accuracy
         """  
 
-        child_file = open(os.path.join(LOGS_DIR, 'child_logger.txt'), 'a+')
-        child_file.write(f'Train with dna: {cnn_dna}')
-
         child_graph = tf.Graph()
         with child_graph.as_default():
             
-            print('Initializing the session')
+            
 
             sess = tf.Session()
             child_network = Child_ConvNet(cnn_dna=cnn_dna,child_id=child_id, num_of_classes=10, **child_network_params)
 
-            print('Creating input pipeline')
+            
 
             train_dataset, valid_dataset, test_dataset, num_train_batches, num_valid_batches, num_test_batches = get_tf_dataset_from_numpy(batch_size=child_network_params['batch_size'])
             
@@ -224,12 +241,12 @@ class Controller(object):
 
             initializer = tf.global_variables_initializer()
 
-            print('Training process started')
+            
 
             sess.run(initializer)
             sess.run(train_init_ops)
 
-            child_file.write(f'Training CNN {child_id} for {child_network_params["max_epochs"]} epochs')
+            
             print(f'Training CNN {child_id} for {child_network_params["max_epochs"]} epochs')
 
             for epoch_idx in range(child_network_params['max_epochs']):
@@ -242,7 +259,7 @@ class Controller(object):
                     avg_loss.append(loss)
                     avg_acc.append(accuracy)
                 
-                child_file.write(f'\t Epoch {epoch_idx}: \t loss: {np.mean(avg_loss)} \t accuracy: {np.mean(avg_acc)}')
+                
                 print(f'\t Epoch {epoch_idx}: \t loss: {np.mean(avg_loss)} \t accuracy: {np.mean(avg_acc)}')
 
             print('Validation and returned rewards')
@@ -253,10 +270,9 @@ class Controller(object):
                 avg_val_loss.append(valid_loss)
                 avg_val_acc.append(valid_accuracy)
 
-            child_file.write(f'\tValidation loss: {np.mean(avg_val_loss)}\t accuracy: {np.mean(avg_val_acc)}')
             print(f'\tValidation loss: {np.mean(avg_val_loss)}\t accuracy: {np.mean(avg_val_acc)}')
 
-        child_file.close()
+      
         return np.mean(avg_val_acc)
 
     def train_controller(self):
@@ -274,12 +290,12 @@ class Controller(object):
 
         step = 0
         total_rewards=  0
-        child_network_architecture = np.array([[3.0, 2.0, 15.0, 1.0] * controller_params['max_layers']], dtype=np.float32)
+        child_network_architecture = np.array([[20.0, 15.0, 150.0, 12.0] * controller_params['max_layers']], dtype=np.float32)
 
-        controller_file = open(os.path.join(LOGS_DIR, 'controller_logger.txt'), 'a+')
+        #controller_file = open(os.path.join(LOGS_DIR, 'controller_logger.txt'), 'a+')
         for episode in range(controller_params['max_episodes']):
 
-            controller_file.write(f'Episode {episode} for controller')
+            #controller_file.write(f'Episode {episode} for controller')
             print(f'\t Episode {episode} for controller \t ')
             step +=1
             episode_reward_buffer = []
@@ -307,25 +323,29 @@ class Controller(object):
             child_network_architecture = np.array(self.architecture_history[-step:]).ravel() / self.division_rate
             child_network_architecture = child_network_architecture.reshape((-1, self.num_cell_outputs))
 
-            baseline = exp_moving_avg(self.reward_history)
-            last_reward = self.reward_history[-1]
-            rewards = [last_reward - baseline]
-
-            controller_file.write('Buffers before loss calculation')
-            controller_file.write(f'States:{child_network_architecture}')
-            controller_file.write(f'Rewards: {rewards}')
+            #baseline = exp_moving_avg(self.reward_history)
             
+
+            print('REWARD HISTORY: ',self.reward_history)
+            
+            
+            last_reward = self.reward_history[-1]
+            
+            reward = [last_reward]
+            print('REWARD: ' , reward)
+
+           
+
             with self.graph.as_default():
 
                 _, loss = self.sess.run([self.train_op, self.total_loss],
                                         {self.child_network_architectures: child_network_architecture,
-                                        self.discounted_rewards: rewards})
+                                        self.discounted_rewards: reward})
+
+                
 
             print(f'Episode: {episode} | Loss: {loss} | DNA: {child_network_architecture.ravel()} | Reward: {mean_reward}')
-            controller_file.write(f'/n Episode: {episode} | Loss: {loss} | DNA: {child_network_architecture.ravel()} | Reward: {mean_reward}')
-
-            #controller_file.close()
-
+           
         
 
 

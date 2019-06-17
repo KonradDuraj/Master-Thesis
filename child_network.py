@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import tensorflow as tf
-from config import LOGS_DIR
 import os
-
+import keras.layers as kl
 
 class Child_ConvNet(object):
     
@@ -83,21 +82,20 @@ class Child_ConvNet(object):
             
             The tensor that represents the output logit (pre-softmax activation)
         """       
-        log_file = open(os.path.join(LOGS_DIR, 'child_logger.txt'), 'a+')
-        log_file.write(f'\t DNA for the network is: {self.cnn_dna}\t')
+
         
         output=input_tensor
         
         for index in range(0, len(self.cnn_dna)):
             
             # get config parameters for the layers
-            print(self.cnn_dna[index])
+            print(self.cnn_dna)
             kernel_size, stride, num_of_filters, max_pool_size = self.cnn_dna[index]
 
             scp_name =  f'child_{self.child_id}/convlayer_{index}' #"child_{}_conv_layer_{}".format(str(self.child_id), str(index))
             with tf.name_scope(scp_name):
                 
-                output = tf.layers.conv2d(inputs=output,
+                output = kl.Conv2D(
                                           kernel_size=(kernel_size,kernel_size),
                                           filters=num_of_filters,
                                           strides=(stride, stride),
@@ -111,36 +109,33 @@ class Child_ConvNet(object):
                                           #https://prateekvjoshi.com/2016/03/29/understanding-xavier-initialization-in-deep-neural-networks/
                                           kernel_initializer=tf.contrib.layers.xavier_initializer(),
                                           bias_initializer=tf.zeros_initializer(),
-                                          kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=self.beta_l2))
+                                          kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=self.beta_l2))(output)
                 
                 # Now that we've created the conv layer we will hardcode
                 # the maxpool layers - this can be changed in the future
                 
-                output = tf.layers.max_pooling2d(output, 
+                output = kl.MaxPooling2D( 
                                                  pool_size=(max_pool_size, max_pool_size),
                                                  strides=1, 
                                                  padding='SAME',
-                                                 name=f'max_pool_{index}')
+                                                 name=f'max_pool_{index}')(output)
                 
                 # Now the dropout layers
                 
-                output = tf.layers.dropout(output, rate=self.dropout_rate, training=self.is_training)
+                #output = kl.Dropout( rate=self.dropout_rate)(output)
                 
                 # Now we flatten our inputs and pass it through our
                 # dense layer which also is hardcoded
                 
                 with tf.name_scope(f'child_{self.child_id}_fully_connected_layer'):
                     
-                    output = tf.layers.flatten(output, name='flatten')
-                    logits = tf.layers.dense(output, self.num_of_classes, name='dense')
+                    output = kl.Flatten(name='flatten')(output)
+                    #dense1 = kl.Dense(30, name='dense1', activation='relu')(output)
+                    logits = kl.Dense(self.num_of_classes, name='dense_final')(output)
 
-                    log_file.close()    
+  
                     
                 return logits
-            
-            
-    
-    
             
         
         

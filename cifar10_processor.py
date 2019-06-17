@@ -49,7 +49,6 @@ def get_tf_dataset_from_numpy(batch_size, validation_split = 0.1):
             number of batches for: train, valid, test sets
         """
         (X, y), (X_test, y_test) = cifar10.load_data()
-        print('Data loaded from keras')
 
         X = X / 255.
         X_test = X_test / 255.
@@ -64,7 +63,6 @@ def get_tf_dataset_from_numpy(batch_size, validation_split = 0.1):
             y = np_utils.to_categorical(y, num_classes=10)
             y_test = np_utils.to_categorical(y_test, num_classes=10)
 
-        print('Data preprocessed')
 
         split_idx = int((1.0 - validation_split) * len(X))
         X_train, y_train = X[:split_idx], y[:split_idx]
@@ -74,13 +72,10 @@ def get_tf_dataset_from_numpy(batch_size, validation_split = 0.1):
         valid_dataset = _create_tf_dataset(X_valid, y_valid, batch_size)
         test_dataset = _create_tf_dataset(X_test, y_test, batch_size)
 
-        print('Created validation dataset')
-
         # Get the batch sizes for the train, valid, and test datasets
         num_train_batches = int(X_train.shape[0] // batch_size)
         num_valid_batches = int(X_valid.shape[0] // batch_size)
         num_test_batches = int(X_test.shape[0] // batch_size)
 
-        print('Batches are calculated')
 
         return train_dataset, valid_dataset, test_dataset, num_train_batches, num_valid_batches, num_test_batches
