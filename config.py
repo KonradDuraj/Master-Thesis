@@ -10,9 +10,9 @@ child_network_params = {
 controller_params = {
     "max_layers": 3,
     "components_per_layer": 4,
-    'beta': 3e-3,
+    'beta': 3e-4,
     'max_episodes': 2000,
-    "num_children_per_episode": 10
+    "num_children_per_episode": 5
 }
 
 MAIN_DIR = os.getcwd()

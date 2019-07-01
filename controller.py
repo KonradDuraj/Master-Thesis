@@ -80,7 +80,7 @@ class Controller(object):
             #network_architecture, nas_cell_hidden_state = tf.nn.dynamic_rnn(nas, tf.expand_dims(nas_cell_hidden_state, -1), dtype=tf.float32)
             network_architecture, nas_cell_hidden_state = tf.nn.dynamic_rnn(nas, tf.expand_dims(nas_cell_hidden_state, -1), dtype=tf.float32)
 
-            bias_variable = tf.Variable([0.05]* self.num_cell_outputs)
+            bias_variable = tf.Variable([0.01]* self.num_cell_outputs)
             network_architecture = tf.nn.bias_add(network_architecture, bias_variable)
 
             print('Network architecture ', network_architecture)
@@ -135,8 +135,8 @@ class Controller(object):
         print('Setting up the optimizer')
         # Now we set up our optimizer and its behaviour during training
         self.global_step = tf.Variable(0, trainable=False)
-        self.learning_rate = tf.train.exponential_decay(0.05, self.global_step, 50,0.96, staircase=True)
-        #self.learning_rate = 0.3
+        #self.learning_rate = tf.train.exponential_decay(0.05, self.global_step,500,0.96, staircase=True)
+        self.learning_rate = 0.01
         self.optimizer = tf.train.RMSPropOptimizer(learning_rate = self.learning_rate)
         print('Optimizer setup finished')
 
@@ -307,6 +307,7 @@ class Controller(object):
                 child_network_architecture = self.generate_child_network(child_network_architecture)[0]
 
                 if np.any(np.less_equal(child_network_architecture, 0.0)):
+                    #reward = 0.0
                     reward = -1.0
                 else:
                     reward = self.train_child_network(cnn_dna=child_network_architecture, child_id = f'child_episode_{episode}_sub_child_{sub_child}')
